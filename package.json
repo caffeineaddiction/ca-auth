@@ -1,0 +1,26 @@
+{
+  "name": "ca-auth",
+  "version": "0.0.2",
+  "description": "Simple Secure Auth Lib",
+  "main": "index.js",
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caffeineaddiction/ca-auth.git"
+  },
+  "author": "CaffeineAddiction <CaffeineAddiction@gmail.com> (http://ca.ffeineaddiction.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/caffeineaddiction/ca-auth/issues"
+  },
+  "homepage": "https://github.com/caffeineaddiction/ca-auth",
+  "dependencies": {
+    "sqlite3": "^2.2.7"
+  },
+  "devDependencies": {
+    "chai": "^1.9.1",
+    "mocha": "^1.21.4"
+  }
+}
