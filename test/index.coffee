@@ -1,250 +1,278 @@
+crypto = require 'crypto'
 _auth = require('../index')
 should = require('chai').should()
 fs = require 'fs'
 
-init    = _auth.init
-dbclose = _auth.dbclose
-create  = _auth.create
-auth    = _auth.authenticate
-update  = _auth.update
-del     = _auth.delete
+db_init  = _auth.init
+db_close = _auth.close
+db_create  = _auth.create
+db_auth    = _auth.authenticate
+db_update  = _auth.update
+db_del     = _auth.delete
+#_auth.debug()
+
+
+#TODO# Removed due to node.crypto issue
+#__$Keys = crypto.getDiffieHellman('modp5')
+#__$Keys.generateKeys()
+#__$privkey = __$Keys.getPrivateKey('base64')
+
+__$hashkey = crypto.randomBytes(32).toString('base64')
 
 
 #TODO: beforeEach() afterEach() to build & tear down DB for each test
 
-beforeEach( () -> 
-  # Slows down testing enough for db to react
-  process.stdout.write('')
-  )
 
-describe('init {key, path, callback}', () ->
-  it( 'creates :memory:', (done)->
+beforeEach( (done) ->
+  #console.log "%%% beforeEach START %%%"
+  db_close( (e) ->
+    should.not.exist(e)
     arg = {}
-    arg.path = ':memory:'
+    arg['hashkey'] = __$hashkey
+    arg['path'] = ':memory:'
     arg['callback'] = (e) ->
       should.not.exist(e)
+      c_arg = {}
+      c_arg['username'] = 'foo'
+      c_arg['userpass'] = 'bar'
+      c_arg['callback'] = (e,r) ->
+        should.not.exist(e)
+        should.exist(r)
+        r.should.equal(1) if r?
+        #console.log "%%% beforeEach DONE %%%"
+        done()
+      db_create(c_arg)
+    db_init(arg)
+   )
+ )
+
+afterEach( (done) ->
+  #console.log "%%% afterEach START %%%"
+  db_close( (e) ->
+    should.not.exist(e)
+    #console.log "%%% afterEach DONE %%%"
+    done()
+    )
+ )
+
+describe( 'init() - {hashkey, path, [callback]}', () ->
+  it( 'create :memory:', (done) ->
+    db_close( (e) ->
+      should.not.exist(e)
+      # INIT DB
+      arg = {}
+      arg['hashkey'] = __$hashkey
+      arg['path'] = ':memory:'
+      arg['callback'] = (e) ->
+        should.not.exist(e)
+        done()
+      db_init(arg)
+      )
+    ) # it end
+
+  it( 'e: db exists error', (done) ->
+    arg = {}
+    arg['hashkey'] = __$hashkey
+    arg['path'] = ':memory:'
+    arg['callback'] = (e) ->
+      e.should.equal('__Authdb already exists')
       done()
-    init(arg)
-    )
-  )
+    db_init(arg)
+    ) # it end
+  ) # describe End
 
-describe('create {authName, authPW}', () ->
-  it( 'created', (done) ->
-    init({path:':memory:',callback: () ->
-      arg = {}
-      arg['authName']  = 'Name'
-      arg['authPW']    = 'Pass'
-      arg['callback']  = (r) -> 
-        r.should.equal('created')
+describe( 'close() - [callback]' , () ->
+  it( 'db exists' , (done) ->
+    db_close( (e) -> 
+      should.not.exist(e)
+      done()
+      )
+    ) # it end
+
+  it( 'db not exists' , (done) ->
+    db_close( (e) -> 
+      db_close( (e) -> 
+        should.not.exist(e)
         done()
-      create(arg)
-      })
-    )
+        )
+      )
+    ) # it end
+  ) # describe End
 
-  it( 'no name', (done) ->
-    init({path:':memory:',callback: () ->
-      arg = {}
-      # arg['authName']  = 'Name'
-      arg['authPW']    = 'Pass'
-      arg['callback']  = (r) -> 
-        r.should.equal('create error')
-        #r.should.equal('foobar') 
-        done()
-      create(arg)
-      })
-    )
+describe( 'create() - {username, userpass, [pubkey], [callback]}' , () ->
+  it( 'create' , (done) ->
+    arg = {}
+    arg['username'] = 'newfoo'
+    arg['userpass'] = 'newbar'
+    arg['callback'] = (e,r) -> 
+      should.not.exist(e)
+      r.should.equal(2)
+      done()
+    db_create(arg)
+    ) # it end
 
-  it( 'no pass', (done) ->
-    init({path:':memory:',callback: () ->
-      arg = {}
-      arg['authName']  = 'Name'
-      # arg['authPW']    = 'Pass'
-      arg['callback']  = (r) -> 
-        r.should.equal('create error')
-        done()
-      create(arg)
-      })
-    )
+  it( 'e: exists' , (done) ->
+    arg = {}
+    arg['username'] = 'foo'
+    arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) -> 
+      e.should.equal('already exists')
+      should.not.exist(r)
+      done()
+    db_create(arg)
+    ) # it end
 
-  it( 'exists', (done) ->
-    init({path:':memory:',callback: () ->
-      arg = {}
-      arg['authName']  = 'Name'
-      arg['authPW']    = 'Pass'
-      arg['callback']  = (r) -> 
-        arg = {}
-        arg['authName']  = 'Name'
-        arg['authPW']    = 'Pass'
-        arg['callback']  = (r) -> 
-          r.should.equal('exists')
-          done()
-        create(arg)
-      create(arg)
-      })
-    )
-  )
+  it( 'e: no username' , (done) ->
+    arg = {}
+    #arg['username'] = 'foo'
+    arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) -> 
+      e.should.equal('create error')
+      should.not.exist(r)
+      done()
+    db_create(arg)
+    ) # it end
 
-describe('auth {authName, authPW, callback}', () ->
-  it( 'authed', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'foo'
-        arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal(1)
-          done()
-        auth(arg)
-      })
-    })
-  )
+  it( 'e: no userpass' , (done) ->
+    arg = {}
+    arg['username'] = 'foo'
+    #arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) -> 
+      e.should.equal('create error')
+      should.not.exist(r)
+      done()
+    db_create(arg)
+    ) # it end
+  ) # describe End
 
-  it( 'no name', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        # arg['authName']  = 'foo'
-        arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('no name')
-          done()
-        auth(arg)
-      })
-    })
-  )
+describe( 'authenticate() - {username, userpass, [callback]}' , () ->
+  it( 'auth' , (done) ->
+    arg = {}
+    arg['username'] = 'foo'
+    arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) ->
+      should.not.exist(e)
+      r.should.equal(1)
+      done()
+    db_auth(arg)
+    ) # it end
 
-  it( 'no pass', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'foo'
-        # arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('no pass')
-          done()
-        auth(arg)
-      })
-    })
-  )
+  it( 'e: not exist' , (done) ->
+    arg = {}
+    arg['username'] = 'notfoo'
+    arg['userpass'] = 'notbar'
+    arg['callback'] = (e,r) ->
+      done()
+      e.should.equal('doesnt exist')
+    db_auth(arg)
+    ) # it end
 
-  it( 'not exist', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'not foo'
-        arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('not exist')
-          done()
-        auth(arg)
-      })
-    })
-  )
+  it( 'e: bad pass' , (done) ->
+    arg = {}
+    arg['username'] = 'foo'
+    arg['userpass'] = 'badbar'
+    arg['callback'] = (e,r) ->
+      e.should.equal('bad password')
+      done()
+    db_auth(arg)
+    ) # it end
 
-  it( 'bad pass', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'foo'
-        arg['authPW']    = 'not bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('bad pass')
-          done()
-        auth(arg)
-      })
-    })
-  )
+  it( 'e: no username' , (done) ->
+    arg = {}
+    #arg['username'] = 'foo'
+    arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) ->
+      e.should.equal('auth error')
+      done()
+    db_auth(arg)
+    ) # it end
 
-  it( 'disabled', (done) -> 
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        update({authUID:1, isEnabled:0,callback: () ->
-          arg = {}
-          arg['authName']  = 'foo'
-          arg['authPW']    = 'bar'
-          arg['callback']  = (r) -> 
-            r.should.equal('disabled')
-            done()
-          auth(arg)
-        })
-      })
-    })
-  ))
+  it( 'e: no userpass' , (done) ->
+    arg = {}
+    arg['username'] = 'foo'
+    #arg['userpass'] = 'bar'
+    arg['callback'] = (e,r) ->
+      e.should.equal('auth error')
+      done()
+    db_auth(arg)
+    ) # it end
 
-describe('update {authUID, authName, authPW, authPerm, isEnabled, callback}', () ->
-  it( 'updated', (done) ->
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'foo'
-        arg['authPW']    = 'newbar'
-        arg['callback']  = (r) -> 
-          r.should.equal('updated')
-          done()
-        update(arg)
-      })
-    })
-  )
+  #it( '-TODO- e: deleted' , (done) ->
+  #  arg = {}
+  #  arg['username'] = 'foo'
+  #  arg['userpass'] = 'bar'
+  #  arg['callback'] = (e,r) -> 
+  #    e.should.equal('create error')
+  #    should.not.exist(r)
+  #    done()
+  #  db_create(arg)
+  #  ) # it end
+  ) # describe End
 
-  it( 'not exist', (done) ->
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg['authName']  = 'notfoo'
-        arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('not exist')
-          done()
-        update(arg)
-      })
-    })
-  )
+describe( 'update() - {userid, [username], [userpass], [pubkey], [perm], [isEnabled], [callback]}' , () ->
+  it( 'updated' , (done) ->
+    arg = {}
+    arg['userid'] = 1
+    arg['username'] = 'updatedfoo'
+    arg['userpass'] = 'updatedbar'
+    arg['pubkey'] = 'not implemented yet'
+    arg['perm'] = 'not implemented yet'
+    arg['isEnabled'] = 1
+    arg['callback'] = (e,r) ->
+      should.not.exist(e)
+      r.should.equal(1)
+      done()
+    db_update(arg)
+    ) # it end
 
-  it( 'update error', (done) ->
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        #arg['authName']  = 'foo'
-        arg['authPW']    = 'bar'
-        arg['callback']  = (r) -> 
-          r.should.equal('_find error')
-          done()
-        update(arg)
-      })
-    })
-  )
-  )
+  it( 'not exist' , (done) ->
+    arg = {}
+    arg['userid'] = 99
+    arg['callback'] = (e,r) ->
+      e.should.equal('doesnt exists')
+      done()
+    db_update(arg)
+    ) # it end
 
-describe('del {authUID, callback}', () ->
-  it( 'deleted', (done) ->
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg.authUID = 1
-        arg['callback']  = (r) -> 
-          r.should.equal('updated')
-          done()
-        update(arg)
-      })
-    })
-  )
+  it( 'update error' , (done) ->
+    arg = {}
+    #arg['userid'] = 1
+    arg['callback'] = (e,r) ->
+      e.should.equal('update error')
+      done()
+    db_update(arg)
+    ) # it end
+  ) # describe End
 
-  it( 'not exist', (done) ->
-    init({path:':memory:',callback: () ->
-      create({authName:'foo',authPW:'bar',callback: () ->
-        arg = {}
-        arg.authUID = -1
-        arg['callback']  = (r) -> 
-          r.should.equal('not exist')
-          done()
-        update(arg)
-      })
-    })
-  )
-  
-  )
+describe( 'delete() - {userid, [callback]}' , () ->
+  it( 'deleted' , (done) ->
+    arg = {}
+    arg['userid'] = 1
+    arg['callback'] = (e,r) ->
+      should.not.exist(e)
+      r.should.equal(1)
+      done()
+    db_del(arg)
+    ) # it end
 
+  it( 'delete error' , (done) ->
+    arg = {}
+    #arg['userid'] = 1
+    arg['callback'] = (e,r) ->
+      e.should.equal('delete error')
+      done()
+    db_del(arg)
+    ) # it end
 
+  it( 'not exist' , (done) ->
+    arg = {}
+    arg['userid'] = 2
+    arg['callback'] = (e,r) ->
+      e.should.equal('doesnt exists')
+      done()
+    db_del(arg)
+    ) # it end
+  ) # describe End
 
 
 

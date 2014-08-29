@@ -1,6 +1,6 @@
 {
   "name": "ca-auth",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Simple Secure Auth Lib",
   "main": "index.js",
   "scripts": {
