@@ -109,6 +109,7 @@ This Lib is the beginings of an Authentication framework.  It makes use of `cryp
 > - [x] Doc API
 >
 > **Eventualy:**
+> - [ ] Change functions to take multiple Arguments instead of `Args` object
 > - [ ] Implement Public Key Authentication
 > - [ ] Update Tests to check for changes on DB side after command
 > - [ ] Implement Permissions system
