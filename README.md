@@ -1,6 +1,8 @@
 ca-auth
 =======
 
+[![NPM](https://nodei.co/npm/ca-auth.png)](https://npmjs.org/package/ca-auth)
+
 **Simple Secure Auth Package**
 
 ######
