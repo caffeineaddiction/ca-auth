@@ -27,6 +27,9 @@ crypto = require 'crypto' # Built in Node.js Encryption Lib
 
 __HashKey = null
 
+#Updated#
+# Fixed __Encrypt & __Decrypt
+
 #TODO# Removed due to node.crypto issue
 #__PrivKey = crypto.getDiffieHellman('modp5')
 
@@ -57,14 +60,16 @@ __Log_tbl += " )"
 __Encrypt = (aMsg,aSecret) ->
   console.log '__Encrypt' if __dbg
   cipher = crypto.createCipher('aes-256-cbc', aSecret)
-  cipher.update(aMsg, 'utf8', 'base64')
-  return cipher.final('base64')
+  tRet = cipher.update(aMsg, 'utf8', 'base64')
+  tRet += cipher.final('base64')
+  return tRet
 
 __Decrypt = (aMsg,aSecret) ->
   console.log '__Decrypt' if __dbg
   decipher = crypto.createDecipher('aes-256-cbc', aSecret)
-  decipher.update(aMsg.replace(/\s/g, "+"), 'base64', 'utf8')
-  return decipher.final('utf8')
+  tRet = decipher.update(aMsg.replace(/\s/g, "+"), 'base64', 'utf8')
+  tRet += decipher.final('utf8')
+  return tRet
 
 __Hash = (aValue,aKey,aSalt) ->
   console.log '__Hash' if __dbg
@@ -365,11 +370,28 @@ class __objAuth
 
 __objAuth::__proto__ = events.EventEmitter::
 
-module.exports = 
+###*
+ * @module ca-auth
+###
+
+module.exports =
+  ###*
+ * Inits authentication database
+ * @function init
+ * @param {object} Args **Only Real Param** All Other Params should be properties of `Args`
+ * @param {string} Args.hashkey can be any string, *should* be random data with a lenght atleast as long as any password being hashed.  Must be the same Value between runs or hashes will not match
+ * @param {string} Args.path *[optional]* path to sqlite3 database *if not set `_auth.db` in package root will be created / used*
+ * @param {function} Args.callback *[optional]* called when DB is ready
+  ### 
   init: (aOpt) ->
     __initdb(aOpt)
     return
 
+  ###*
+ * Closes authentication database
+ * @function close
+ * @param {function} callback *[optional]* called after db has ben closed
+  ### 
   close: (aFn) ->
     nullit = (e) =>
       __Authdb = null
@@ -387,6 +409,14 @@ module.exports =
     __dbg = true
     return
 
+  ###*
+ * Creates User *fails if user already exists*
+ * @function create
+ * @param {object} Args **Only Real Param** All Other Params should be properties of `Args`
+ * @param {string} Args.username Username String *could also be hash*
+ * @param {string} Args.userpass Password String *could also be hash*
+ * @param {function} Args.callback *[optional]* will be passed `error`,`authID` **error** will be a `string` error string or `null`, **authID** will be a `null` or `int` users authID
+  ### 
   create: (aOpt) ->
     if not __dbready
       __dbreadyque.push( () => __create(aOpt) )
@@ -394,6 +424,14 @@ module.exports =
     __create(aOpt)
     return
 
+  ###*
+ * Authentication of users
+ * @function authenticate
+ * @param {object} Args **Only Real Param** All Other Params should be properties of `Args`
+ * @param {string} Args.username Username String *could also be hash (must be same as what was used for `create`)*
+ * @param {string} Args.userpass Password String *could also be hash (must be same as what was used for `create`)*
+ * @param {function} Args.callback *[optional]* will be passed `error`,`authID` **error** will be a `string` error string or `null`, **authID** will be a `null` or `int` users authID
+  ### 
   authenticate: (aOpt) ->
     if not __dbready
       __dbreadyque.push( () => __authenticate(aOpt) )
@@ -401,6 +439,16 @@ module.exports =
     __authenticate(aOpt)
     return
 
+  ###*
+ * Updates user data for a given userid *fails if user does not exist*
+ * @function update
+ * @param {object} Args **Only Real Param** All Other Params should be properties of `Args`
+ * @param {int} Args.userid authUID of the user to be updated
+ * @param {string} Args.username *[optional]* Username String *could also be hash*
+ * @param {string} Args.userpass *[optional]* Password String *could also be hash*
+ * @param {int} Args.isEnabled *[optional]* can be 0 or 1
+ * @param {function} Args.callback *[optional]* will be passed `error`,`authID` **error** will be a `string` error string or `null`, **authID** will be a `null` or `int` users authID
+  ### 
   update: (aOpt) ->
     if not __dbready
       __dbreadyque.push( () => __update(aOpt) )
@@ -408,6 +456,13 @@ module.exports =
     __update(aOpt)
     return
 
+  ###*
+ * Soft delete of user *changes isEnabled to 0 preventing Authentication*
+ * @function delete
+ * @param {object} Args **Only Real Param** All Other Params should be properties of `Args`
+ * @param {int} Args.userid authUID of the user to be deleted
+ * @param {function} Args.callback *[optional]* will be passed `error`,`authID` **error** will be a `string` error string or `null`, **authID** will be a `null` or `int` users authID
+  ### 
   delete: (aOpt) ->
     if not __dbready
       __dbreadyque.push( () => __delete(aOpt) )
