@@ -1,8 +1,15 @@
 ca-auth
 =======
 
+<<<<<<< HEAD
 **Simple Secure Auth Package**
 
+=======
+[![NPM](https://nodei.co/npm/ca-auth.png)](https://npmjs.org/package/ca-auth)
+
+**Simple Secure Auth Package**
+
+>>>>>>> 37ec222d39ee56e09dc5c4cf627b3a9ad5f21658
 ######
 This Lib is the beginings of an Authentication framework.  It makes use of `crypto` and `sqlite3` to create, store, check hashed username / password combinations.  
 
@@ -107,8 +114,15 @@ This Lib is the beginings of an Authentication framework.  It makes use of `cryp
 >
 > **Testing / Doc:**
 > - [x] Doc API
+<<<<<<< HEAD
 >
 > **Eventualy:**
+=======
+> - [ ] Add Example Code
+>
+> **Eventualy:**
+> - [ ] Change functions to take multiple Arguments instead of `Args` object
+>>>>>>> 37ec222d39ee56e09dc5c4cf627b3a9ad5f21658
 > - [ ] Implement Public Key Authentication
 > - [ ] Update Tests to check for changes on DB side after command
 > - [ ] Implement Permissions system
